@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react'
+import React, { useState } from 'react'
 import mainBackground from '@/assets/mainBackground/mainBackground.webp'
-import { openDB, getAllData } from '@/utils/indexedDB'
+import useIndexedDB from '@/hooks/useIndexedDB'
+import useAuth from '@/hooks/useAuth'
 
 interface MainMenuProps {
   onStartGame: () => void // 게임 시작 콜백
@@ -13,19 +14,61 @@ const MainMenu: React.FC<MainMenuProps> = ({
   onSettings,
   onExit,
 }) => {
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const db = await openDB()
-        const data = await getAllData(db)
-        console.log('All Data: ', data)
-      } catch (error) {
-        console.error('Error fetching data: ', error)
-      }
-    }
+  const { add, login, error: dbError } = useIndexedDB() // useIndexedDB 훅 사용
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [isSignUpMode, setIsSignUpMode] = useState(false)
+  const { isLogin, setIsLogin, logout, error, setError } = useAuth()
+  // const [, setDb] = useState<IDBDatabase | null>(null)
 
-    fetchData()
-  }, [])
+  const handleLogin = async () => {
+    try {
+      const user = await login({ username, password })
+      console.log(user)
+
+      if (user) {
+        setIsLogin(true)
+        setError(null)
+        console.log('Signup successful')
+        // 로그인 성공 시 로컬스토리지에 토큰 저장
+        localStorage.setItem('userToken', JSON.stringify(user))
+      } else {
+        setError('Invalid username or password')
+      }
+    } catch (err) {
+      setError('An error occurred during login')
+    }
+  }
+
+  const handleLogout = () => {
+    logout() // 로그아웃 시 로컬 스토리지에서 토큰 삭제
+    setIsLogin(false) // 로그인 상태 초기화
+  }
+
+  const handleSignUp = async () => {
+    try {
+      if (!username || !password) {
+        setError('모든 필드를 입력해주세요.')
+        return
+      }
+
+      // 회원가입 데이터
+      const playerData = { username, password }
+
+      // 데이터 추가
+      await add(playerData)
+      setIsSignUpMode(false) // 회원가입 모드 종료 후 로그인 화면으로 돌아가기
+      setUsername('')
+      setPassword('')
+      setError(null) // 오류 초기화
+
+      // 성공적으로 회원가입이 끝났으면, 로그인 모드로 전환할 수 있음
+    } catch (error) {
+      setError('회원가입에 실패했습니다.')
+      console.error(dbError)
+      console.error(error)
+    }
+  }
 
   return (
     <div
@@ -66,23 +109,87 @@ const MainMenu: React.FC<MainMenuProps> = ({
 
       {/* 버튼들 */}
       <div className="flex flex-col space-y-4 mt-6">
-        <button
-          className="px-8 py-4 bg-green-500 text-white font-bold rounded-lg shadow-md hover:bg-green-600 transition"
-          onClick={onStartGame}
-        >
-          ▶ 게임 시작
-        </button>
+        {isLogin ? (
+          <>
+            <button
+              className="px-8 py-4 bg-green-500 text-white font-bold rounded-lg shadow-md hover:bg-green-600 transition"
+              onClick={onStartGame}
+            >
+              ▶ 오프라인으로 플레이
+            </button>
+            <button
+              className="px-8 py-4 bg-gray-500 text-white font-bold rounded-lg shadow-md hover:bg-gray-600 transition duration-300"
+              onClick={handleLogout}
+            >
+              로그아웃
+            </button>
+          </>
+        ) : isSignUpMode ? (
+          <div>
+            <form onSubmit={handleSignUp} className="space-y-4">
+              <input
+                type="text"
+                placeholder="Username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full p-4 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full p-4 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                type="submit"
+                className="w-full py-4 bg-blue-500 text-white font-bold rounded-lg shadow-md hover:bg-blue-600 transition duration-300"
+              >
+                회원가입
+              </button>
+            </form>
+            {error && <p className="text-red-500 text-center">{error}</p>}
+          </div>
+        ) : (
+          <div>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <input
+                type="text"
+                placeholder="Username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                autoComplete="username" // 사용자 이름에 autocomplete 추가
+                className="w-full p-4 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password" // 비밀번호에 autocomplete 추가
+                className="w-full p-4 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                type="submit"
+                className="w-full py-4 bg-green-500 text-white font-bold rounded-lg shadow-md hover:bg-green-600 transition duration-300"
+              >
+                로그인
+              </button>
+            </form>
+            {error && <p className="text-red-500 text-center">{error}</p>}
+            <button
+              onClick={() => setIsSignUpMode(true)}
+              className="w-full py-4 bg-gray-500 text-white font-bold rounded-lg shadow-md hover:bg-gray-600 transition duration-300"
+            >
+              회원가입
+            </button>
+          </div>
+        )}
         <button
           className="px-8 py-4 bg-blue-500 text-white font-bold rounded-lg shadow-md hover:bg-blue-600 transition"
           onClick={onSettings}
         >
           ⚙️ 설정 (준비 중)
-        </button>
-        <button
-          className="px-8 py-4 bg-blue-500 text-white font-bold rounded-lg shadow-md hover:bg-blue-600 transition"
-          onClick={onSettings}
-        >
-          ⚙️ 테스트 DB
         </button>
         <button
           className="px-8 py-4 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition"

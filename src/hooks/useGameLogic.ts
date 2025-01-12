@@ -42,6 +42,10 @@ const useGameLogic = (
   let wings = initializeWings()
   let monsters = initializeMonsters()
 
+  const FPS = 60 // 초당 60프레임
+  const frameInterval = 1000 / FPS
+  let lastFrameTime = 0
+
   // 투사체 배열
   const projectiles = useRef<
     Array<{ x: number; y: number; direction: boolean }>
@@ -87,6 +91,7 @@ const useGameLogic = (
     if (!ctx) return
 
     const keys: Record<string, boolean> = {}
+    let lastTimestamp: number = 0
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (gameOver) return
@@ -112,10 +117,13 @@ const useGameLogic = (
       keys[e.key] = false
     }
 
-    const updateProjectiles = () => {
+    const updateProjectiles = (deltaTime: number) => {
+      const projectileSpeed = 4 // 기본 투사체 이동 속도
+      const adjustedSpeed = projectileSpeed * (deltaTime / 10) // deltaTime을 사용해 이동 속도 조정
+
       projectiles.current = projectiles.current.filter((projectile) => {
         // 투사체 이동 (오른쪽 또는 왼쪽)
-        projectile.x += projectile.direction ? 10 : -10
+        projectile.x += projectile.direction ? adjustedSpeed : -adjustedSpeed
 
         // 투사체가 사거리를 초과하면 제거
         return Math.abs(projectile.x - player.x) <= 500
@@ -149,13 +157,16 @@ const useGameLogic = (
       })
     }
 
-    const handleMovement = () => {
+    const handleMovement = (deltaTime: number) => {
       const canvas = canvasRef.current
       if (!canvas) return
 
+      const moveSpeed = 5 // 기본 이동 속도
+      const adjustedSpeed = moveSpeed * (deltaTime / 20) // deltaTime에 맞게 속도 조정
+
       // 좌우 이동
       if (keys['ArrowRight'] && player.x + player.width < canvas.width) {
-        player.x += 5
+        player.x += adjustedSpeed
         player.flip = true
 
         // 캔버스 스크롤 이동 조건 수정
@@ -166,17 +177,17 @@ const useGameLogic = (
       }
 
       if (keys['ArrowLeft'] && player.x > 0) {
-        player.x -= 5
+        player.x -= adjustedSpeed
         player.flip = false
       }
 
       // 날개로 인한 공중 이동
       if (player.hasWings) {
         if (keys['ArrowUp'] && player.y > 0) {
-          player.y -= 5 // 위로 이동
+          player.y -= adjustedSpeed // 위로 이동
         }
         if (keys['ArrowDown'] && player.y + player.height < canvas.height) {
-          player.y += 5 // 아래로 이동
+          player.y += adjustedSpeed // 아래로 이동
         }
       } else {
         // 점프 (일반 상황)
@@ -356,16 +367,28 @@ const useGameLogic = (
       }
     }
 
-    const applyGravity = () => {
+    const applyGravity = (deltaTime: number) => {
       if (!player.onGround && !player.hasWings) {
-        player.dy += GRAVITY
+        const gravityEffect = GRAVITY * (deltaTime / 20) // deltaTime을 사용해 중력 효과를 시간에 비례하도록 적용
+        player.dy += gravityEffect
         player.y += player.dy
       }
     }
 
-    const update = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
+    const update = (timestamp: number) => {
+      if (timestamp - lastFrameTime < frameInterval) {
+        requestAnimationFrame(update) // 너무 빨리 업데이트하지 않도록 함
+        return
+      }
 
+      lastFrameTime = timestamp
+
+      const deltaTime = timestamp - lastTimestamp
+      lastTimestamp = timestamp
+
+      ctx.clearRect(0, 0, canvas?.width, canvas?.height)
+
+      // Update game state based on deltaTime
       drawBackground(ctx, backgroundImage, canvasRef.current)
       drawCollectedCoins(
         ctx,
@@ -385,20 +408,21 @@ const useGameLogic = (
       drawProjectiles() // 투사체 그리기
 
       if (!gameOver) {
-        handleMovement()
-        applyGravity()
+        handleMovement(deltaTime)
+        applyGravity(deltaTime)
         checkCollisions()
-        updateProjectiles() // 투사체 이동 업데이트
+        updateProjectiles(deltaTime) // 투사체 이동 업데이트
         checkProjectileCollisions() // 투사체 충돌 체크
       }
 
       animationFrameId.current = requestAnimationFrame(update)
     }
 
+    // Start the game loop with timestamp
+    animationFrameId.current = requestAnimationFrame(update)
+
     document.addEventListener('keydown', handleKeyDown)
     document.addEventListener('keyup', handleKeyUp)
-
-    update()
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
