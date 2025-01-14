@@ -26,11 +26,19 @@ import background from '../assets/background/background.webp'
 import heartIcon from '../assets/heart/heart-icon.png'
 import { coinAppearances } from '../constants/appearance'
 
+export interface Projectiles {
+  x: number
+  y: number
+  direction: boolean
+  originX: number
+}
+
 const useGameLogic = (
   canvasRef: React.RefObject<HTMLCanvasElement>,
   onExit: () => void
 ) => {
   const [gameOver, setGameOver] = useState(false)
+  // const [countdown, setCountdown] = useState<number | null>(null) // 카운트다운 상태
   const scrollOffset = useRef(0)
   const animationFrameId = useRef<number | null>(null)
   const player = useRef({ ...initialPlayerState }).current
@@ -42,14 +50,12 @@ const useGameLogic = (
   let wings = initializeWings()
   let monsters = initializeMonsters()
 
-  const FPS = 60 // 초당 60프레임
+  const FPS = 1000 // 초당 60프레임
   const frameInterval = 1000 / FPS
   let lastFrameTime = 0
 
   // 투사체 배열
-  const projectiles = useRef<
-    Array<{ x: number; y: number; direction: boolean }>
-  >([])
+  const projectiles = useRef<Array<Projectiles>>([])
 
   // 공격 간격 제어
   const attackCooldown = 100 // 공격 간격 (ms)
@@ -64,7 +70,31 @@ const useGameLogic = (
 
   const resetPlayerPosition = () => {
     Object.assign(player, { ...initialPlayerState })
+
+    // 플레이어를 몬스터와 멀리 떨어진 안전한 위치에 초기화
+    const safeStartPosition = platforms[0] // 첫 번째 플랫폼을 기준으로 안전 위치 설정
+    if (safeStartPosition) {
+      player.x =
+        safeStartPosition.x + safeStartPosition.width / 2 - player.width / 2
+      player.y = safeStartPosition.y - player.height
+      player.onGround = true
+    }
   }
+
+  // const startGameWithCountdown = (callback: () => void) => {
+  //   setCountdown(3) // 카운트다운 시작
+
+  //   const countdownInterval = setInterval(() => {
+  //     setCountdown((prev) => {
+  //       if (prev === 1) {
+  //         clearInterval(countdownInterval)
+  //         setCountdown(null) // 카운트다운 종료
+  //         callback() // 게임 시작
+  //       }
+  //       return prev! - 1
+  //     })
+  //   }, 1000)
+  // }
 
   const restartGame = () => {
     resetPlayerPosition()
@@ -81,7 +111,10 @@ const useGameLogic = (
     }
 
     // 새로운 AnimationFrame 시작
+    // startGameWithCountdown(() => {
+    // 새로운 AnimationFrame 시작
     startGameLoop()
+    // })
   }
 
   const startGameLoop = () => {
@@ -96,20 +129,6 @@ const useGameLogic = (
     const handleKeyDown = (e: KeyboardEvent) => {
       if (gameOver) return
       keys[e.key] = true
-
-      // X 키를 눌렀을 때 투사체 발사 (공격 속도 제한)
-      if (e.key === 'x') {
-        const currentTime = Date.now()
-        if (currentTime - lastAttackTime.current >= attackCooldown) {
-          projectiles.current.push({
-            x: player.x + (player.flip ? player.width : 0), // 플레이어 위치 기준
-            y: player.y + player.height / 2, // 플레이어 중심에서 발사
-            direction: player.flip, // 방향 (true: 오른쪽, false: 왼쪽)
-          })
-
-          lastAttackTime.current = currentTime // 마지막 공격 시간 갱신
-        }
-      }
     }
 
     const handleKeyUp = (e: KeyboardEvent) => {
@@ -122,11 +141,12 @@ const useGameLogic = (
       const adjustedSpeed = projectileSpeed * (deltaTime / 10) // deltaTime을 사용해 이동 속도 조정
 
       projectiles.current = projectiles.current.filter((projectile) => {
-        // 투사체 이동 (오른쪽 또는 왼쪽)
+        // 투사체 이동 (스크롤 오프셋 포함)
         projectile.x += projectile.direction ? adjustedSpeed : -adjustedSpeed
 
-        // 투사체가 사거리를 초과하면 제거
-        return Math.abs(projectile.x - player.x) <= 500
+        // 초기 위치(originX)를 기준으로 사거리 계산
+        const distance = Math.abs(projectile.x - projectile.originX)
+        return distance <= 500 // 사거리 제한
       })
     }
 
@@ -196,6 +216,21 @@ const useGameLogic = (
           player.onGround = false
         }
       }
+
+      // X 키를 눌렀을 때 투사체 발사 (공격 속도 제한)
+      if (keys['x']) {
+        const currentTime = Date.now()
+        if (currentTime - lastAttackTime.current >= attackCooldown) {
+          projectiles.current.push({
+            x: player.x + (player.flip ? player.width : 0),
+            y: player.y + player.height / 2,
+            direction: player.flip,
+            originX: player.x, // 스크롤 기준 초기 위치 설정
+          })
+
+          lastAttackTime.current = currentTime
+        }
+      }
     }
 
     const triggerInvincibility = (
@@ -224,6 +259,9 @@ const useGameLogic = (
         invincibilityTimeout = null
       }, invincibleTime)
     }
+
+    // 시작할 때 무적 1초
+    triggerInvincibility(0.1 * 1000) // ms
 
     const decreaseLives = () => {
       if (player.isInvincible) return
@@ -431,6 +469,7 @@ const useGameLogic = (
   }
 
   useEffect(() => {
+    // startGameWithCountdown(() => startGameLoop())
     startGameLoop()
 
     return () => {

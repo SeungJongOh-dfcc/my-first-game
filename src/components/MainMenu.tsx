@@ -21,15 +21,17 @@ const MainMenu: React.FC<MainMenuProps> = ({
   const { isLogin, setIsLogin, logout, error, setError } = useAuth()
   // const [, setDb] = useState<IDBDatabase | null>(null)
 
-  const handleLogin = async () => {
+  const handleLogin = async (event: React.FormEvent) => {
     try {
+      event.preventDefault() // form 액션의 기본 동작(리다이렉션) 방지
+
       const user = await login({ username, password })
       console.log(user)
 
       if (user) {
         setIsLogin(true)
         setError(null)
-        console.log('Signup successful')
+        console.log('login successful')
         // 로그인 성공 시 로컬스토리지에 토큰 저장
         localStorage.setItem('userToken', JSON.stringify(user))
       } else {
@@ -115,7 +117,7 @@ const MainMenu: React.FC<MainMenuProps> = ({
               className="px-8 py-4 bg-green-500 text-white font-bold rounded-lg shadow-md hover:bg-green-600 transition"
               onClick={onStartGame}
             >
-              ▶ 오프라인으로 플레이
+              ▶ 게임시작
             </button>
             <button
               className="px-8 py-4 bg-gray-500 text-white font-bold rounded-lg shadow-md hover:bg-gray-600 transition duration-300"

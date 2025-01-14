@@ -52,10 +52,9 @@ export const loginCheck = async (
   return new Promise((resolve, reject) => {
     request.onsuccess = () => {
       const user = request.result
-      console.log(sha512(password) === user.password)
 
       // 비밀번호 해싱 후 비교
-      if (user && sha512(password) === user.password) {
+      if (user && sha512(password) === user?.password) {
         resolve(user) // 비밀번호 일치 시 사용자 정보 반환
       } else {
         resolve(null) // 비밀번호 불일치 시 null 반환

@@ -1,16 +1,22 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import MainMenu from './components/MainMenu'
 import GameCanvas from './components/GameCanvas'
+import { useMessageStore } from './store/store'
 
 function App() {
   const [gameStarted, setGameStarted] = useState(false) // 게임 시작 상태
+  const { message, fetchMessage } = useMessageStore()
+
+  useEffect(() => {
+    fetchMessage()
+  }, [fetchMessage])
 
   const handleStartGame = () => {
     setGameStarted(true) // 게임 시작
   }
 
   const handleSettings = () => {
-    alert('Settings menu coming soon!')
+    alert(message)
   }
 
   const handleExit = () => {

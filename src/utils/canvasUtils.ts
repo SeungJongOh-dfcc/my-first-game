@@ -205,7 +205,7 @@ export const drawBackground = (
   backgroundImage: HTMLImageElement,
   canvas: any
 ) => {
-  ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height)
+  ctx.drawImage(backgroundImage, 0, 0, canvas?.width || 0, canvas?.height || 0)
 
   // 상단 코인
   // const coinImage = coinAppearances.default
@@ -219,9 +219,9 @@ export const drawCollectedCoins = (
   collectedCoins: number
 ) => {
   const iconSize = 25
-  ctx.drawImage(coinImage, canvas.width - 100, 10, iconSize, iconSize) // 코인 아이콘
+  ctx.drawImage(coinImage, (canvas?.width || 0) - 100, 10, iconSize, iconSize) // 코인 아이콘
   ctx.font = '20px Arial'
   ctx.fillStyle = 'black'
   ctx.textAlign = 'left'
-  ctx.fillText(`x ${collectedCoins}`, canvas.width - 65, 32) // 코인 개수 텍스트
+  ctx.fillText(`x ${collectedCoins}`, (canvas?.width || 0) - 65, 32) // 코인 개수 텍스트
 }
