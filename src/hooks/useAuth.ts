@@ -1,27 +1,39 @@
-import { useState, useEffect } from 'react'
+// import { userHandlers } from '@/api/apiHandlers'
+// import useLoadingStore from '@/store/loadingStore'
+// import { useState } from 'react'
 
-// 로컬 스토리지에서 사용자 정보를 확인하여 로그인 상태 유지
-const useAuth = () => {
-  const [isLogin, setIsLogin] = useState<boolean>(false)
-  const [error, setError] = useState<string | null>(null)
+// // 로컬 스토리지에서 사용자 정보를 확인하여 로그인 상태 유지
+// const useAuth = () => {
+//   const [error, setError] = useState<string | null>(null)
+//   const setLoading = useLoadingStore((state) => state.setLoading)
 
-  useEffect(() => {
-    // 컴포넌트가 마운트될 때 로컬 스토리지에서 사용자 정보를 확인
-    const storedUserToken = localStorage.getItem('userToken')
+//   // 로그인 상태 확인
+//   const checkAuth = async () => {
+//     // try {
+//     //   setLoading(true)
+//     //   const { isAuthenticated } = await userHandlers.loginCheck()
+//     //   setIsLogin(isAuthenticated)
+//     // } catch (err) {
+//     //   setIsLogin(false)
+//     //   setError('Authentication failed')
+//     // } finally {
+//     //   setLoading(false)
+//     // }
+//   }
 
-    if (storedUserToken) {
-      // 저장된 토큰이 있다면 로그인 상태로 설정
-      setIsLogin(true)
-    }
-  }, [])
+//   const logout = async () => {
+//     // try {
+//     //   setLoading(true)
+//     //   await userHandlers.loginCheck()
+//     //   setIsLogin(false)
+//     // } catch (err) {
+//     //   setError('Logout failed')
+//     // } finally {
+//     //   setLoading(false)
+//     // }
+//   }
 
-  const logout = () => {
-    // 로그아웃 시 로컬 스토리지에서 토큰 삭제
-    localStorage.removeItem('userToken')
-    setIsLogin(false)
-  }
+//   return { error, setError, logout, checkAuth }
+// }
 
-  return { isLogin, setIsLogin, error, setError, logout }
-}
-
-export default useAuth
+// export default useAuth

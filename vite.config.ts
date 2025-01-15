@@ -10,4 +10,7 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'), // process.cwd()로 현재 디렉토리 기반 설정
     },
   },
+  server: {
+    port: 5174,
+  },
 })
