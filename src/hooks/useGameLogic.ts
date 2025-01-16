@@ -8,7 +8,11 @@ import {
   initializeMonsters,
   platforms,
 } from '../constants/objects'
-import { GRAVITY, JUMP_STRENGTH } from '../constants/settings'
+import {
+  EXPERIENCE_PER_LEVEL,
+  GRAVITY,
+  JUMP_STRENGTH,
+} from '../constants/settings'
 import Platform from '../classes/Platform'
 import {
   drawBackground,
@@ -25,6 +29,8 @@ import {
 import background from '../assets/background/background.webp'
 import heartIcon from '../assets/heart/heart-icon.png'
 import { coinAppearances } from '../constants/appearance'
+import useGameStore from '@/store/store'
+import useAuthStore from '@/store/authStore'
 
 export interface Projectiles {
   x: number
@@ -33,15 +39,27 @@ export interface Projectiles {
   originX: number
 }
 
-const useGameLogic = (
-  canvasRef: React.RefObject<HTMLCanvasElement>,
-  onExit: () => void
-) => {
+const useGameLogic = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
   const [gameOver, setGameOver] = useState(false)
+  const { username } = useAuthStore()
+  const { experience: userExp, level: userLevel, getUserStats } = useGameStore()
+  // 게임 클리어 시 모달에 전송할 데이터
+  const [gameCleared, setGameCleared] = useState(false) // 게임 클리어 상태
+  const [clearTime, setClearTime] = useState<string>('') // 클리어 시간
+  const [coinsCollected, setCoinsCollected] = useState<number>(0) // 동전 수
+  const [monstersDefeated, setMonstersDefeated] = useState<number>(0) // 처치한 몬스터 수
+  const [experience, setExperience] = useState<number>(0) // 게임 진행중 획득한 경험치량
+  const [level, setLevel] = useState<number>(1) // 현재 레벨
+  const [levelUpMessage, setLevelUpMessage] = useState<string | null>(null) // 레벨 업 메시지
+  const [isLevelUp, setIsLevelUp] = useState<boolean>(false)
+  const startTime = useRef<number>(Date.now()) // 게임 시작 시간
+  //////////////////////////////////
   // const [countdown, setCountdown] = useState<number | null>(null) // 카운트다운 상태
   const scrollOffset = useRef(0)
   const animationFrameId = useRef<number | null>(null)
   const player = useRef({ ...initialPlayerState }).current
+
+  const keys = useRef<Record<string, boolean>>({}).current
 
   let invincibilityTimeout: NodeJS.Timeout | null = null
 
@@ -68,6 +86,39 @@ const useGameLogic = (
   backgroundImage.src = background
   /////
 
+  useEffect(() => {
+    if (username) {
+      getUserStats(username)
+      setExperience(userExp)
+      setLevel(userLevel)
+    }
+  }, [username, userExp, userLevel]) // username 변경 시 실행
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (gameCleared || gameOver) return
+    keys[e.key] = true
+  }
+
+  const handleKeyUp = (e: KeyboardEvent) => {
+    if (gameCleared || gameOver) return
+    keys[e.key] = false
+  }
+
+  const stopGame = () => {
+    // 게임 루프 중단
+    if (animationFrameId.current !== null) {
+      cancelAnimationFrame(animationFrameId.current)
+      animationFrameId.current = null
+    }
+
+    // 키 이벤트 제거
+    document.removeEventListener('keydown', handleKeyDown)
+    document.removeEventListener('keyup', handleKeyUp)
+
+    // 키 입력 상태 초기화
+    Object.keys(keys).forEach((key) => (keys[key] = false))
+  }
+
   const resetPlayerPosition = () => {
     Object.assign(player, { ...initialPlayerState })
 
@@ -80,6 +131,25 @@ const useGameLogic = (
       player.onGround = true
     }
   }
+
+  // 경험치 획득 및 레벨 업 처리
+  // const gainExperience = (amount: number) => {
+  //   setExperience((prev) => {
+  //     const newExperience = prev + amount
+
+  //     // 레벨 업 조건 확인
+  //     while (
+  //       level < EXPERIENCE_PER_LEVEL.length - 1 &&
+  //       newExperience >= EXPERIENCE_PER_LEVEL[level]
+  //     ) {
+  //       setLevel((prevLevel) => prevLevel + 1)
+  //       setLevelUpMessage(`레벨 업! 현재 레벨: ${level + 1}`)
+  //       setTimeout(() => setLevelUpMessage(null), 3000) // 3초 후 메시지 숨기기
+  //     }
+
+  //     return newExperience
+  //   })
+  // }
 
   // const startGameWithCountdown = (callback: () => void) => {
   //   setCountdown(3) // 카운트다운 시작
@@ -110,6 +180,16 @@ const useGameLogic = (
       cancelAnimationFrame(animationFrameId.current)
     }
 
+    // 상태 초기화
+    setGameCleared(false)
+    setCoinsCollected(0)
+    setMonstersDefeated(0)
+    setExperience(0)
+    setClearTime('') // 클리어 시간 초기화
+    setIsLevelUp(false)
+    startTime.current = Date.now() // 시작 시간 초기화
+    ////////////////
+
     // 새로운 AnimationFrame 시작
     // startGameWithCountdown(() => {
     // 새로운 AnimationFrame 시작
@@ -123,18 +203,7 @@ const useGameLogic = (
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const keys: Record<string, boolean> = {}
     let lastTimestamp: number = 0
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (gameOver) return
-      keys[e.key] = true
-    }
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (gameOver) return
-      keys[e.key] = false
-    }
 
     const updateProjectiles = (deltaTime: number) => {
       const projectileSpeed = 4 // 기본 투사체 이동 속도
@@ -172,6 +241,7 @@ const useGameLogic = (
             // 몬스터에 맞았을 경우
             monsters.splice(monsterIndex, 1) // 몬스터 제거
             projectiles.current.splice(projectileIndex, 1) // 투사체 제거
+            setExperience((prev) => prev + monster.experience)
           }
         })
       })
@@ -330,8 +400,18 @@ const useGameLogic = (
         player.y + player.height > finishLine.y &&
         player.y < finishLine.y + finishLine.height
       ) {
-        alert('🎉 축하합니다! 스테이지 1 클리어! 🎉')
-        await onExit() // 메인 화면으로 이동
+        if (!gameCleared) {
+          // 이미 클리어된 상태인지 확인
+          const endTime = Date.now() // 게임 종료 시간
+          const elapsedTime = (endTime - startTime.current) / 1000 // 초 단위로 계산
+
+          // 상태 업데이트
+          setClearTime(`${elapsedTime.toFixed(2)}초`)
+          setCoinsCollected(player.coin) // 획득한 동전 수
+          setMonstersDefeated(initializeMonsters().length - monsters.length) // 처치한 몬스터 수
+          setGameCleared(true) // 게임 클리어 상태 활성화
+          stopGame() // 게임 루프 및 입력 멈춤
+        }
       }
 
       // 몬스터랑 부딪혔을 때
@@ -414,6 +494,8 @@ const useGameLogic = (
     }
 
     const update = (timestamp: number) => {
+      if (gameCleared || gameOver) return // 게임이 끝났으면 루프 중단
+
       if (timestamp - lastFrameTime < frameInterval) {
         requestAnimationFrame(update) // 너무 빨리 업데이트하지 않도록 함
         return
@@ -469,17 +551,37 @@ const useGameLogic = (
   }
 
   useEffect(() => {
+    if (experience > EXPERIENCE_PER_LEVEL[level]) {
+      setLevel((prev) => prev + 1)
+      setLevelUpMessage(`레벨 업! 현재 레벨: ${level + 1}`)
+      setTimeout(() => setLevelUpMessage(null), 3000) // 3초 후 메시지 숨기기
+      setIsLevelUp(true)
+    }
+  }, [experience, level])
+
+  useEffect(() => {
     // startGameWithCountdown(() => startGameLoop())
     startGameLoop()
 
     return () => {
-      if (animationFrameId.current !== null) {
-        cancelAnimationFrame(animationFrameId.current)
-      }
+      stopGame()
     }
-  }, [gameOver])
+  }, [gameOver, gameCleared])
 
-  return { gameOver, restartGame, player, scrollOffset }
+  return {
+    gameOver,
+    restartGame,
+    player,
+    scrollOffset,
+    gameCleared,
+    clearTime,
+    coinsCollected,
+    monstersDefeated,
+    experience,
+    level,
+    levelUpMessage,
+    isLevelUp,
+  }
 }
 
 export default useGameLogic

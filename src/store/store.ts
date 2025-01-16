@@ -1,4 +1,4 @@
-import { apiHandlers, helloMessage } from '@/api/apiHandlers'
+import { apiHandlers, userHandlers } from '@/api/apiHandlers'
 import { create } from 'zustand'
 
 interface CounterState {
@@ -10,6 +10,15 @@ interface CounterState {
 interface MessageState {
   message: string
   fetchMessage: () => Promise<void>
+}
+
+interface GameState {
+  level: number
+  experience: number
+  monstersDefeated: number
+  coinsCollected: number
+  clearTime: number
+  getUserStats: (username: string) => Promise<void>
 }
 
 export const useCounterStore = create<CounterState>((set) => ({
@@ -29,3 +38,22 @@ export const useMessageStore = create<MessageState>((set) => ({
     }
   },
 }))
+
+const useGameStore = create<GameState>((set) => ({
+  experience: 0,
+  level: 1,
+  clearTime: 0,
+  coinsCollected: 0,
+  monstersDefeated: 0,
+  getUserStats: async (username: string) => {
+    try {
+      const { experience, level, clearTime, coinsCollected, monstersDefeated } =
+        await userHandlers.getUserStats(username)
+
+      set({ experience, level, clearTime, coinsCollected, monstersDefeated })
+    } catch (error) {
+      console.error('유저 레벨, 경험치 불러오기 실패', error)
+    }
+  },
+}))
+export default useGameStore

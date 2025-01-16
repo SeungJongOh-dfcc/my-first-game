@@ -1,14 +1,14 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { userHandlers } from '@/api/apiHandlers' // 로그인 API 호출 함수
-import useAuthStore from '@/store/authStore'
+// import useAuthStore from '@/store/authStore'
 
 const LoginPage: React.FC = () => {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
-  const { checkAuth } = useAuthStore()
+  // const { checkAuth } = useAuthStore()
 
   const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -18,8 +18,8 @@ const LoginPage: React.FC = () => {
 
       if (success) {
         setError(null)
-        console.log(success)
-        await checkAuth()
+        // console.log(success)
+        // await checkAuth()
         await navigate('/') // 메인 메뉴로 이동
       } else {
         setError('Invalid username or password')

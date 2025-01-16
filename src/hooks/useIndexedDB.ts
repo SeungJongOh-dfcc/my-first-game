@@ -11,6 +11,7 @@ import { openDB } from '@/utils/idb'
 export interface User {
   username: string
   password: string
+  userId: number
 }
 
 const useIndexedDB = () => {

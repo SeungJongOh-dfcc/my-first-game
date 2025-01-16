@@ -7,22 +7,28 @@ interface MainMenuProps {
   onStartGame: () => void // 게임 시작 콜백
   onSettings: () => void // 설정 메뉴 콜백
   onExit: () => void // 게임 종료 콜백
+  onPlayerInfo: () => void
 }
 
 const MainMenu: React.FC<MainMenuProps> = ({
   onStartGame,
   onSettings,
   onExit,
+  onPlayerInfo,
 }) => {
   const navigate = useNavigate()
-  const { isLogin, logout, error, checkAuth } = useAuthStore()
+  const { isLogin, logout, error, checkAuth, username } = useAuthStore()
 
   useEffect(() => {
-    console.log(isLogin)
+    const fetchAuth = async () => {
+      await checkAuth()
+    }
+
+    fetchAuth()
   }, [isLogin])
 
   const handleLogout = async () => {
-    await logout() // 로그아웃 시 로컬 스토리지에서 토큰 삭제
+    await logout() // 로그아웃 시 jwt 클리어
     await checkAuth()
   }
 
@@ -67,6 +73,9 @@ const MainMenu: React.FC<MainMenuProps> = ({
       <div className="flex flex-col space-y-4 mt-6">
         {isLogin ? (
           <>
+            <p className="text-white font-bold text-center">
+              {username}님 안녕하세요!
+            </p>
             <button
               className="px-8 py-4 bg-green-500 text-white font-bold rounded-lg shadow-md hover:bg-green-600 transition"
               onClick={onStartGame}
@@ -91,6 +100,12 @@ const MainMenu: React.FC<MainMenuProps> = ({
             {error && <p className="text-red-500 text-center">{error}</p>}
           </>
         )}
+        <button
+          className="px-8 py-4 bg-blue-500 text-white font-bold rounded-lg shadow-md hover:bg-blue-600 transition"
+          onClick={onPlayerInfo}
+        >
+          플레이어 정보
+        </button>
         <button
           className="px-8 py-4 bg-blue-500 text-white font-bold rounded-lg shadow-md hover:bg-blue-600 transition"
           onClick={onSettings}

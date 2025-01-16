@@ -1,3 +1,4 @@
+// import { User } from '@/hooks/useIndexedDB'
 import { apiClient } from './api'
 
 export type helloMessage = string
@@ -5,6 +6,15 @@ export type helloMessage = string
 export interface LoginProps {
   username: string
   password: string
+}
+
+export interface GameResultProps {
+  clearTime: number
+  coinsCollected: number
+  monstersDefeated: number
+  experience: number
+  level: number
+  username: string
 }
 
 export const apiHandlers = {
@@ -45,5 +55,25 @@ export const userHandlers = {
   //logout
   logoutUser: async (): Promise<any> => {
     return await apiClient.post('/auth/logout', {}, { withCredentials: true })
+  },
+
+  //game-results
+  gameResults: async (gameResult: GameResultProps): Promise<any> => {
+    return await apiClient.post('/users/game-results', gameResult, {
+      withCredentials: true,
+    })
+  },
+
+  //get-user
+  getUserInfo: async (username: string): Promise<any> => {
+    return await apiClient.get(`/users/${username}`)
+  },
+
+  getUserStats: async (username: string): Promise<any> => {
+    const { data } = await apiClient.get(`/users/stats`, {
+      params: { username },
+      withCredentials: true,
+    })
+    return data
   },
 }

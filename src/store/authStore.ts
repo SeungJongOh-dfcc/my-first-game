@@ -7,16 +7,18 @@ interface AuthState {
   checkAuth: () => Promise<void>
   logout: () => void
   error: string
+  username: string
 }
 
 const useAuthStore = create<AuthState>((set) => ({
   isLogin: false,
   error: '',
+  username: '',
   setIsLogin: (isLogin) => set(() => ({ isLogin })),
   checkAuth: async () => {
     try {
-      const { isAuthenticated } = await userHandlers.loginCheck() // 서버에서 인증 상태 확인
-      set({ isLogin: isAuthenticated })
+      const { isAuthenticated, username } = await userHandlers.loginCheck() // 서버에서 인증 상태 확인
+      set({ isLogin: isAuthenticated, username })
     } catch (err: unknown) {
       if (err instanceof Error) {
         set({ isLogin: false, error: err.message }) // 에러 메시지 사용
